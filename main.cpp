@@ -87,6 +87,14 @@ void save_bmp(const char* file_path, unsigned char* image_data, int width, int h
     }
 }
 
+
+// Function to calculate memory usage
+size_t calculate_memory_usage(int width, int height) {
+    // Memory allocated = width * height * size of one pixel (1 byte for grayscale images)
+    return static_cast<size_t>(width * height);
+}
+
+
 // Rotate image 90 degrees clockwise
 unsigned char* rotate_clockwise(unsigned char* image_data, int width, int height) {
     unsigned char* rotated_image = new unsigned char[width * height];
@@ -113,15 +121,55 @@ unsigned char* rotate_counterclockwise(unsigned char* image_data, int width, int
     return rotated_image;
 }
 
-// Apply a simple Gaussian filter (just a placeholder for now)
+
+
+// Apply a Gaussian filter with a larger kernel and better edge handling
 unsigned char* apply_gaussian_filter(unsigned char* image_data, int width, int height) {
     unsigned char* filtered_image = new unsigned char[width * height];
 
-    // In this simple placeholder, we just copy the original data to the filtered image
-    std::copy(image_data, image_data + (width * height), filtered_image);
+    // Define a larger 5x5 Gaussian kernel (normalized)
+    float kernel[5][5] = {
+        {1 / 273.0f,  4 / 273.0f,  7 / 273.0f,  4 / 273.0f, 1 / 273.0f},
+        {4 / 273.0f, 16 / 273.0f, 26 / 273.0f, 16 / 273.0f, 4 / 273.0f},
+        {7 / 273.0f, 26 / 273.0f, 41 / 273.0f, 26 / 273.0f, 7 / 273.0f},
+        {4 / 273.0f, 16 / 273.0f, 26 / 273.0f, 16 / 273.0f, 4 / 273.0f},
+        {1 / 273.0f,  4 / 273.0f,  7 / 273.0f,  4 / 273.0f, 1 / 273.0f}
+    };
+
+    // Apply the kernel to each pixel (skip edges for simplicity)
+    for (int y = 2; y < height - 2; ++y) {
+        for (int x = 2; x < width - 2; ++x) {
+            float sum = 0.0f;
+
+            // Convolve the 5x5 region
+            for (int ky = -2; ky <= 2; ++ky) {
+                for (int kx = -2; kx <= 2; ++kx) {
+                    int pixel_x = x + kx;
+                    int pixel_y = y + ky;
+                    unsigned char pixel_value = image_data[pixel_y * width + pixel_x];
+                    sum += pixel_value * kernel[ky + 2][kx + 2];
+                }
+            }
+
+            // Set the filtered value
+            filtered_image[y * width + x] = static_cast<unsigned char>(sum);
+        }
+    }
+
+
+    // Handle edges by copying original pixel values
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (y < 2 || x < 2 || y >= height - 2 || x >= width - 2) {
+                filtered_image[y * width + x] = image_data[y * width + x];
+            }
+        }
+    }
 
     return filtered_image;
 }
+
+
 
 int main() {
     int width, height;
@@ -136,6 +184,14 @@ int main() {
         return -1;
     }
 
+
+// Calculate memory usage
+    size_t memory_allocated = calculate_memory_usage(width, height);
+    std::cout << "Memory allocated for loading the image: " 
+              << memory_allocated << " bytes (" 
+              << (memory_allocated / 1024.0) << " KB)" << std::endl;
+
+
     // Rotate and save images
     unsigned char* rotated_clockwise = rotate_clockwise(image_data, width, height);
     save_bmp(output_file_clockwise, rotated_clockwise, height, width);
@@ -143,8 +199,16 @@ int main() {
     unsigned char* rotated_counterclockwise = rotate_counterclockwise(image_data, width, height);
     save_bmp(output_file_counterclockwise, rotated_counterclockwise, height, width);
 
+
+    // Apply Gaussian filter to the rotated clockwise image
     unsigned char* filtered_image = apply_gaussian_filter(rotated_clockwise, height, width);
     save_bmp(output_file_filtered, filtered_image, height, width);
+
+
+     // Print some pixel values for debugging
+    std::cout << "Debugging pixel values (before and after Gaussian filter):" << std::endl;
+    std::cout << "Original: " << static_cast<int>(rotated_clockwise[100 * height + 100])
+              << ", Filtered: " << static_cast<int>(filtered_image[100 * height + 100]) << std::endl;
 
     // Free dynamically allocated memory
     delete[] image_data;

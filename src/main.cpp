@@ -1,6 +1,23 @@
 /*Mokobia Joan Chidiebere, st135508@student.spbu.ru, 24.B83-mm*/
 
+/**
+ * @file main.cpp
+ * @brief Main program for BMP image processing.
+ *
+ * This program performs the following operations on a BMP image:
+ * - Loads a grayscale BMP image from disk.
+ * - Rotates the image clockwise and counterclockwise.
+ * - Applies a Gaussian filter (parallelized with OpenMP).
+ * - Measures performance of each operation.
+ * - Saves the resulting images to disk.
+ *
+ * @author Mokobia Joan Chidiebere
+ * @date 2025-06-03
+ * @version 1.0
+ */
 #include "main.h"
+#include <chrono>
+using namespace std::chrono;
 
 // Function to load BMP image and convert to grayscale
 unsigned char* load_bmp(const char* file_path, int& width, int& height) {
@@ -99,6 +116,7 @@ size_t calculate_memory_usage(int width, int height) {
 unsigned char* rotate_clockwise(unsigned char* image_data, int width, int height) {
     unsigned char* rotated_image = new unsigned char[width * height];
 
+    #pragma omp parallel for collapse(2)
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             rotated_image[x * height + (height - y - 1)] = image_data[y * width + x];
@@ -112,6 +130,7 @@ unsigned char* rotate_clockwise(unsigned char* image_data, int width, int height
 unsigned char* rotate_counterclockwise(unsigned char* image_data, int width, int height) {
     unsigned char* rotated_image = new unsigned char[width * height];
 
+    #pragma omp parallel for collapse(2)
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             rotated_image[(width - x - 1) * height + y] = image_data[y * width + x];
@@ -124,6 +143,17 @@ unsigned char* rotate_counterclockwise(unsigned char* image_data, int width, int
 
 
 // Apply a Gaussian filter with a larger kernel and better edge handling
+
+/**
+ * @brief Applies a 5x5 Gaussian filter to the image data.
+ *
+ * @param image_data Pointer to the raw grayscale image data.
+ * @param width Width of the image.
+ * @param height Height of the image.
+ * @return A new dynamically allocated buffer containing the filtered image.
+ */
+unsigned char* apply_gaussian_filter(unsigned char* image_data, int width, int height);
+
 unsigned char* apply_gaussian_filter(unsigned char* image_data, int width, int height) {
     unsigned char* filtered_image = new unsigned char[width * height];
 
@@ -137,6 +167,7 @@ unsigned char* apply_gaussian_filter(unsigned char* image_data, int width, int h
     };
 
     // Apply the kernel to each pixel (skip edges for simplicity)
+    #pragma omp parallel for collapse(2)
     for (int y = 2; y < height - 2; ++y) {
         for (int x = 2; x < width - 2; ++x) {
             float sum = 0.0f;
@@ -170,53 +201,75 @@ unsigned char* apply_gaussian_filter(unsigned char* image_data, int width, int h
 }
 
 
-
 int main() {
     int width, height;
-    const char* input_file = "input_image.bmp";
+    const char* input_file = "images/input_image.bmp";
     const char* output_file_clockwise = "output_clockwise.bmp";
     const char* output_file_counterclockwise = "output_counterclockwise.bmp";
     const char* output_file_filtered = "output_filtered.bmp";
 
-    // Load image data
+    // Timing image loading
+    auto start_load = std::chrono::high_resolution_clock::now();
     unsigned char* image_data = load_bmp(input_file, width, height);
-    if (!image_data) {
-        return -1;
-    }
+    auto end_load = std::chrono::high_resolution_clock::now();
+    if (!image_data) return -1;
+    std::chrono::duration<double> load_duration = end_load - start_load;
+    std::cout << "Time to load image: " << load_duration.count() << " seconds\n";
 
-
-// Calculate memory usage
+    // Calculate memory usage
     size_t memory_allocated = calculate_memory_usage(width, height);
-    std::cout << "Memory allocated for loading the image: " 
-              << memory_allocated << " bytes (" 
-              << (memory_allocated / 1024.0) << " KB)" << std::endl;
+    std::cout << "Memory allocated for loading the image: "
+              << memory_allocated << " bytes ("
+              << (memory_allocated / 1024.0) << " KB)\n";
 
-
-    // Rotate and save images
+    // Timing clockwise rotation
+    auto start_rotate_cw = std::chrono::high_resolution_clock::now();
     unsigned char* rotated_clockwise = rotate_clockwise(image_data, width, height);
+    auto end_rotate_cw = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> rotate_cw_duration = end_rotate_cw - start_rotate_cw;
+    std::cout << "Time to rotate clockwise: " << rotate_cw_duration.count() << " seconds\n";
+
     save_bmp(output_file_clockwise, rotated_clockwise, height, width);
 
+    // Timing counterclockwise rotation
+    auto start_rotate_ccw = std::chrono::high_resolution_clock::now();
     unsigned char* rotated_counterclockwise = rotate_counterclockwise(image_data, width, height);
+    auto end_rotate_ccw = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> rotate_ccw_duration = end_rotate_ccw - start_rotate_ccw;
+    std::cout << "Time to rotate counterclockwise: " << rotate_ccw_duration.count() << " seconds\n";
+
     save_bmp(output_file_counterclockwise, rotated_counterclockwise, height, width);
 
+    // Timing Sequential Gaussian filter
+    auto start_filter_seq = std::chrono::high_resolution_clock::now();
+    unsigned char* filtered_image_seq = apply_gaussian_filter(rotated_clockwise, height, width);
+    auto end_filter_seq = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> filter_duration_seq = end_filter_seq - start_filter_seq;
+    std::cout << "Time to apply Sequential Gaussian filter: " << filter_duration_seq.count() << " seconds\n";
 
-    // Apply Gaussian filter to the rotated clockwise image
+    save_bmp("output_filtered_sequential.bmp", filtered_image_seq, height, width);
+
+    // Timing Gaussian filter
+    auto start_filter = std::chrono::high_resolution_clock::now();
     unsigned char* filtered_image = apply_gaussian_filter(rotated_clockwise, height, width);
+    auto end_filter = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> filter_duration = end_filter - start_filter;
+    std::cout << "Time to apply Gaussian filter: " << filter_duration.count() << " seconds\n";
+
     save_bmp(output_file_filtered, filtered_image, height, width);
 
-
-     // Print some pixel values for debugging
-    std::cout << "Debugging pixel values (before and after Gaussian filter):" << std::endl;
+    // Debugging pixel values
+    std::cout << "Debugging pixel values (before and after Gaussian filter):\n";
     std::cout << "Original: " << static_cast<int>(rotated_clockwise[100 * height + 100])
               << ", Filtered: " << static_cast<int>(filtered_image[100 * height + 100]) << std::endl;
 
-    // Free dynamically allocated memory
+    // Free memory
     delete[] image_data;
     delete[] rotated_clockwise;
     delete[] rotated_counterclockwise;
     delete[] filtered_image;
+    delete[] filtered_image_seq;
 
-    std::cout << "Processing complete." << std::endl;
-
+    std::cout << "Processing complete.\n";
     return 0;
 }

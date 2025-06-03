@@ -1,5 +1,14 @@
 /*Mokobia Joan Chidiebere, st135508@student.spbu.ru, 24.B83-mm*/
 
+/**
+ * @file main.h
+ * @brief Common definitions and structures for image processing.
+ *
+ * Contains definitions for BMP file headers and necessary includes.
+ *
+ * @author Mokobia Joan
+ * @date 2025-06-03
+ */
 #ifndef MAIN_h
 #define MAIN_h
 
@@ -9,7 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-
+#include <omp.h>
 #endif
 
 #pragma pack(push, 1)

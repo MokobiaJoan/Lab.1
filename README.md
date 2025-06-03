@@ -14,3 +14,8 @@ BUILD: make
 RUN: ./mylab
 
 To clean: make cleanall
+
+### Doxyfile
+doxygen docs/Doxyfile
+### Run
+xdg-open docs/html/index.html

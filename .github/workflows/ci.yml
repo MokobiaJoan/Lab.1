@@ -27,7 +27,7 @@ jobs:
       run: make
 
     - name: Run Doxygen
-      run: doxygen Doxyfile
+      run: doxygen docs/Doxyfile
 
     - name: Clean build artifacts
       run: make clean

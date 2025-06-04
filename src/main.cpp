@@ -200,7 +200,7 @@ unsigned char* apply_gaussian_filter(unsigned char* image_data, int width, int h
     return filtered_image;
 }
 
-
+#ifndef TESTING
 int main() {
     int width, height;
     const char* input_file = "images/input_image.bmp";
@@ -273,3 +273,4 @@ int main() {
     std::cout << "Processing complete.\n";
     return 0;
 }
+#endif

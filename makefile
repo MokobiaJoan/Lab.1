@@ -11,6 +11,7 @@ OBJ_DIR = obj
 SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
+
 # Create object directory if it doesn't exist
 $(shell mkdir -p $(OBJ_DIR))
 
@@ -33,3 +34,11 @@ clean:
 cleanall: clean
 	rm -f $(PROJECT)
 	rm -rf $(OBJ_DIR)
+	rm -f run_tests
+
+# Google Test flags (adjust path if needed)
+GTEST_FLAGS = -lgtest -lgtest_main -pthread
+
+test: tests/test.cpp
+	$(CXX) $(CXXFLAGS) -DTESTING -o run_tests tests/test.cpp $(GTEST_FLAGS)
+	./run_tests	
